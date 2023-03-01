@@ -35,6 +35,16 @@ def crawl_app(link, last_mod):
         googleplay_link = soup.find("a", class_="shadowed-btn gply-link")
         title = googleplay_link.get("title")
 
+        download_link_app =soup.find_all("a", class_="download-btn")
+        for i in download_link_app:
+            dl = i.get("href")
+            print(dl)
+            stroge = i.find("span",class_="txt").text.split("-")[1].strip()
+            print(stroge)
+
+        
+        
+
         download_box_info = ''
 
         tr = soup.find_all("tr")
@@ -58,7 +68,7 @@ def crawl_app(link, last_mod):
         # Bikes Hill 2.6.0 – بازی مسابقه ای “دوچرخه سواری در تپه ها” اندروید + مود
         en_name = title.split('–')[0].strip()
         fa_name = ''.join(title.split('–')[1:]).strip()
-
+        
         cur.execute(INSERT_APP_QUERY, (fa_name, en_name, last_mod,
                     download_box_info, googleplay_link, link))
         conn.commit()
@@ -70,13 +80,15 @@ def crawl_app(link, last_mod):
         print(e)
 
 
-with open('links.txt', 'r') as file:
-    for app in file.readlines():
-        app = app.strip().split(' ')  # app link, date, time seprated by space
-        link = app[0]
-        last_mod = app[1] + ' ' + app[2]
+# with open('links.txt', 'r') as file:
+#     for app in file.readlines():
+#         app = app.strip().split(' ')  # app link, date, time seprated by space
+#         link = app[0]
+#         last_mod = app[1] + ' ' + app[2]
 
-        crawl_app(link, last_mod)
+#         crawl_app(link, last_mod)
 
-conn.close()
-exit(0)
+# conn.close()
+# exit(0)
+
+crawl_app("https://www.farsroid.com/addams-family-mystery-mansion/", "hello")
