@@ -43,7 +43,7 @@ def crawl_app(link, last_mod):
             print(stroge)
 
         
-        
+
 
         download_box_info = ''
 
@@ -80,15 +80,15 @@ def crawl_app(link, last_mod):
         print(e)
 
 
-# with open('links.txt', 'r') as file:
-#     for app in file.readlines():
-#         app = app.strip().split(' ')  # app link, date, time seprated by space
-#         link = app[0]
-#         last_mod = app[1] + ' ' + app[2]
+with open('links.txt', 'r') as file:
+    for app in file.readlines():
+        app = app.strip().split(' ')  # app link, date, time seprated by space
+        link = app[0]
+        last_mod = app[1] + ' ' + app[2]
 
-#         crawl_app(link, last_mod)
+        crawl_app(link, last_mod)
 
-# conn.close()
-# exit(0)
+conn.close()
+exit(0)
 
-crawl_app("https://www.farsroid.com/addams-family-mystery-mansion/", "hello")
+
