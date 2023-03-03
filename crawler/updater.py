@@ -4,7 +4,6 @@ import requests
 from bs4 import BeautifulSoup as bs4
 import sys
 import psycopg2
-import psycopg2.extras
 
 HOST = "localhost"
 DATABASE = "farsroid"
