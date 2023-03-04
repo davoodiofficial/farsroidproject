@@ -5,9 +5,9 @@ import concurrent.futures
 
 
 def get_apps_link(link):
-    global counter
-    global limit
     r = requests.get(link, headers={"Accept": "application/xml"})
+    if r.status_code != 200:
+        print('has a problem:', link, file=sys.stderr)
     results = bs(r.content, 'lxml-xml')
     results = results.find_all('url')
 
@@ -19,9 +19,12 @@ def get_apps_link(link):
         last_mod = last_mod.split(
             'T')[0] + ' ' + last_mod.split('T')[1].split('+')[0]  # date + ' ' + time
         # 'app link, date, time' seprated by space
+        if 'http' not in app_link:
+            print('con not find link:', link, file=sys.stderr)
         lst.append(app_link + ' ' + last_mod)
 
-    print(*lst, sep='\n')
+    file.write('\n'.join(lst))
+    file.write('\n')
 
 
 farsroid_sitemap_url = "https://www.farsroid.com/sitemap.xml"
@@ -40,5 +43,7 @@ for i in results:
         # print(*apps_link, sep='\n')
 
 max_workers = 20
+file = open('links.txt', 'w')
 with concurrent.futures.ThreadPoolExecutor(max_workers) as thp:
     thp.map(get_apps_link, app_links)
+file.close()
