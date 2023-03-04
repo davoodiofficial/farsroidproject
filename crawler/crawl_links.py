@@ -1,9 +1,7 @@
 import requests
 from bs4 import BeautifulSoup as bs
 import sys
-
-counter = 0
-limit = 500
+import concurrent.futures
 
 
 def get_apps_link(link):
@@ -15,34 +13,32 @@ def get_apps_link(link):
 
     lst = []
 
-    if counter > limit:
-        print('max limit reached', file=sys.stderr)
-        exit(0)
-
-    for j in results:
-        counter += 1
-        app_link = j.find('loc').text
-        last_mod = j.find('lastmod').text
+    for i in results:
+        app_link = i.find('loc').text
+        last_mod = i.find('lastmod').text
         last_mod = last_mod.split(
             'T')[0] + ' ' + last_mod.split('T')[1].split('+')[0]  # date + ' ' + time
         # 'app link, date, time' seprated by space
         lst.append(app_link + ' ' + last_mod)
 
-    return lst
+    print(*lst, sep='\n')
 
 
 farsroid_sitemap_url = "https://www.farsroid.com/sitemap.xml"
 
 r = requests.get(farsroid_sitemap_url, headers={"Accept": "application/xml"})
 
-
 results = bs(r.content, 'lxml-xml')
-results = results.find_all('sitemap')
-
+results = results.find_all('loc')
+app_links = list()
 
 for i in results:
-    link = i.find('loc').text
-
+    link = i.text
     if "sitemap-pt" in link:
-        apps_link = get_apps_link(link)
-        print(*apps_link, sep='\n')
+        app_links.append(link)
+        # apps_link = get_apps_link(link)
+        # print(*apps_link, sep='\n')
+
+max_workers = 20
+with concurrent.futures.ThreadPoolExecutor(max_workers) as thp:
+    thp.map(get_apps_link, app_links)
