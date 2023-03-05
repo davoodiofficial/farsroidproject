@@ -6,7 +6,7 @@ import psycopg2.extras
 SELECT_QUERY1 = """SELECT * FROM apps WHERE en_name like '%%'||%s||'%%' or fa_name like '%%'||%s||'%%'"""
 SELECT_QUERY2 = """SELECT * FROM apps WHERE googleplay_link = %s"""
 
-HOST = "localhost"
+HOST = "postgres"
 DATABASE = "farsroid"
 USER = "postgres"
 PASSWORD = "pass"
