@@ -8,13 +8,12 @@ api_id = 9774361
 api_hash = 'd77b4befd171e96f29e47c6f2d2daa35'
 bot_token = '5634331533:AAHEvxg6W7Egs3qV2XkJIe8_KOvmNF6K29U'
 
-API_HOST = 'localhost'
+API_HOST = 'myfastapi'
 API_PORT = '80'
 
 MAX_MESSAGE_SIZE = 4096
 
-bot = TelegramClient('bot', api_id, api_hash, proxy=(
-    "socks5", '127.0.0.1', 9150)).start(bot_token=bot_token)
+bot = TelegramClient('bot', api_id, api_hash).start(bot_token=bot_token)
 
 
 @bot.on(events.NewMessage(incoming=True))
