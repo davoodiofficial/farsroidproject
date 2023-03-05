@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import psycopg2
 import sys
 import json
+import concurrent.futures
 
 HOST = "localhost"
 DATABASE = "farsroid"
@@ -24,10 +25,12 @@ INSERT_APP_QUERY = """INSERT INTO apps(
 	VALUES (%s, %s, %s, %s, %s, %s, %s);"""
 
 
-def crawl_app(link, last_mod):
+def crawl_app(app):
     global cur
     global conn
 
+    link = app[0]
+    last_mod = app[1]
     try:
         page = requests.get(link)
         soup = BeautifulSoup(page.content, "html.parser")
@@ -63,8 +66,6 @@ def crawl_app(link, last_mod):
         en_name = title.split('–')[0].strip()
         fa_name = ''.join(title.split('–')[1:]).strip()
 
-        print(download_box_info.keys())
-        print(downlaod_links.keys())
         cur.execute(INSERT_APP_QUERY, (fa_name, en_name, last_mod,
                                        json.dumps(download_box_info), googleplay_link, link, json.dumps(downlaod_links)))
         conn.commit()
@@ -72,13 +73,14 @@ def crawl_app(link, last_mod):
         print('can not connect to f{link}', file=sys.stderr)
     except psycopg2.IntegrityError:
         pass
+        print('integrity error', file=sys.stderr)
         conn.rollback()
     except Exception as e:
-        print(e)
+        print(e, file=sys.stderr)
         conn.rollback()
-    else:
-        print('inserted:', link, flush=True)
 
+
+app_links = list()
 
 conn = psycopg2.connect(host=HOST, database=DATABASE,
                         user=USER, password=PASSWORD)
@@ -92,6 +94,11 @@ with open('links.txt', 'r') as file:
         app = app.strip().split(' ')  # app link, date, time seprated by space
         link = app[0]
         last_mod = app[1] + ' ' + app[2]
-        crawl_app(link, last_mod)
+        # crawl_app(link, last_mod)
+        app_links.append((link, last_mod))
+
+max_workers = 20
+with concurrent.futures.ThreadPoolExecutor(max_workers) as thp:
+    thp.map(crawl_app, app_links)
+
 conn.close()
-exit(0)
