@@ -8,7 +8,7 @@ import concurrent.futures
 import json
 import time
 
-HOST = "localhost"
+HOST = "postgres"
 DATABASE = "farsroid"
 USER = "postgres"
 PASSWORD = "pass"
@@ -120,6 +120,8 @@ def updater():
 
 
 schedule.every().day.at("17:00").do(updater)
+print('updater is running')
 while True:
+    print('updater: time:', datetime.now())
     schedule.run_pending()
     time.sleep(1)
