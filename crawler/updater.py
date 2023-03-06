@@ -4,6 +4,8 @@ import requests
 from bs4 import BeautifulSoup as bs4
 import sys
 import psycopg2
+import concurrent.futures
+import json
 
 HOST = "localhost"
 DATABASE = "farsroid"
@@ -14,17 +16,22 @@ con = psycopg2.connect(host=HOST, database=DATABASE,
                        user=USER, password=PASSWORD)
 cur = con.cursor()
 
+UPSERT_QUERY = """INSERT INTO apps(
+            fa_name, en_name, last_mod, download_box, googleplay_link, farsroid_link, download_links)
+            VALUES(%s, %s, %s, %s, %s, %s, %s) ON CONFLICT(farsroid_link) 
+            DO UPDATE SET fa_name=%s, en_name=%s, last_mod=%s, download_box=%s, googleplay_link=%s, farsroid_link=%s, download_links=%s"""
+
 API = "https://www.farsroid.com/api/posts/?ids="
 
 
-def update_app(link, last_mod):
+def update_app(app):
+    link = app
     try:
         page = requests.get(link)
         soup = bs4(page.content, "html.parser")
 
         googleplay_link = soup.find("a", class_="shadowed-btn gply-link")
         title = googleplay_link.get("title")
-
         download_link_app = soup.find_all("a", class_="download-btn")
         downlaod_links = ''
         for i in download_link_app:
@@ -54,48 +61,61 @@ def update_app(link, last_mod):
         en_name = title.split('–')[0].strip()
         fa_name = ''.join(title.split('–')[1:]).strip()
 
-        return f"UPDATE apps SET fa_name = '{fa_name}', en_name = '{en_name}', last_mod = '{last_mod}', download_box = '{download_box_info}', googleplay_link = '{googleplay_link}', farsroid_link = '{link}', download_links = '{downlaod_links}'"
+        last_mod = soup.find('ul', class_='post-infs').find_all(
+            'li')[1].find('div').find('div').get('data-timestamp')
+
+        cur.execute(UPSERT_QUERY, (fa_name, en_name, last_mod,
+                                   json.dumps(download_box_info), googleplay_link, link, json.dumps(
+                                       downlaod_links), fa_name, en_name, last_mod,
+                                   json.dumps(download_box_info), googleplay_link, link, json.dumps(downlaod_links)))
+        con.commit()
     except requests.exceptions.ConnectionError:
         print('can not connect to f{link}', file=sys.stderr)
     except psycopg2.IntegrityError:
-        pass
+        print('integrity error')
     except Exception as e:
         print(e)
 
 
 def updater():
-    global con
-    global cur
+    updated_apps_url = 'https://www.farsroid.com/today-published-apps/'
+    updated_games_url = 'https://www.farsroid.com/today-published-games/'
 
-    updated_apps = str()
-    cur.execute("SELECT * FROM apps")
-    res = cur.fetchall()
-    for i in res:
-        old_date = datetime.strptime(
-            i[3], '%Y-%m-%d %H:%M:%S')  # i3 is last mod
+    updated_apps_link = []
+    updated_games_link = []
 
-        try:
-            r = requests.get(i[6])  # i6 is farsroid link
-            soup = bs4(r.content, 'html.parser')
-            data_tiemstamp = soup.find('ul', class_='post-infs').find_all(
-                'li')[1].find('div').find('div').get('data-timestamp')
-            new_date = datetime.strptime(
-                data_tiemstamp, '%Y-%m-%d %H:%M:%S')
+    r = requests.get(updated_apps_url)
+    if r.status_code != 200:
+        print('update apps: status code is not 200', file=sys.stderr)
+    else:
+        soup = bs4(r.content, 'html.parser')
+        apps = soup.find(
+            'div', class_='post-list-company-grid').find_all('a', class_='abs-fill')
+        for app in apps:
+            app_link = app.get('href')
+            updated_apps_link.append(app_link)
+        print(updated_apps_link)
+        print(len(updated_apps_link))
 
-            if old_date < new_date:
-                update_query = update_app(
-                    i[6], data_tiemstamp) + f" WHERE id = {i[0]};"
-                updated_apps += update_query
-        except requests.exceptions.ConnectionError:
-            print('can not connect to f{link}', file=sys.stderr)
-        except AttributeError:
-            print('can not get last mod:', i[6], file=sys.stderr)
-        except Exception as e:
-            print(e)
-        else:
-            print('is up to date:', i[6])
+    r = requests.get(updated_games_url)
+    if r.status_code != 200:
+        print('update games: status code is not 200', file=sys.stderr)
+    else:
+        soup = bs4(r.text, 'html.parser')
+        apps = soup.find(
+            'div', class_='post-list-company-grid').find_all('a', class_='abs-fill')
+        for app in apps:
+            game_link = app.get('href')
+            updated_games_link.append(game_link)
+        print(updated_games_link)
+        print(len(updated_games_link))
 
-    print(updated_apps)
+    max_workers = 20
+    with concurrent.futures.ThreadPoolExecutor(max_workers) as thp:
+        thp.map(update_app, updated_apps_link)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers) as thp:
+        thp.map(update_app, updated_games_link)
 
 
 updater()
