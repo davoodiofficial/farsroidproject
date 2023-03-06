@@ -19,3 +19,8 @@ services:
       - "80:80"
     depends_on:
       - db
+  updater:
+    container_name: myupdater
+    image: myupdater
+    depends_on:
+      - db

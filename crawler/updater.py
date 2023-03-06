@@ -6,6 +6,7 @@ import sys
 import psycopg2
 import concurrent.futures
 import json
+import time
 
 HOST = "localhost"
 DATABASE = "farsroid"
@@ -118,4 +119,7 @@ def updater():
         thp.map(update_app, updated_games_link)
 
 
-updater()
+schedule.every().day.at("17:00").do(updater)
+while True:
+    schedule.run_pending()
+    time.sleep(1)
